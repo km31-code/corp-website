@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model categories {
+  id        String   @id @db.VarChar
+  name      String?  @map("_name") @db.VarChar
+  sortorder Float?   @db.Real
+  deleted   Boolean?
+}
+
+model devices {
+  id String @id @db.VarChar
+}
+
+model discounts {
+  id          String   @id @db.VarChar
+  orderref_id String   @db.VarChar
+  name        String?  @map("_name") @db.VarChar
+  amount      Float?   @db.Real
+  percentage  Decimal? @db.Decimal
+  discount_id String?  @db.VarChar
+  orders      orders   @relation(fields: [orderref_id], references: [id], onDelete: Cascade, map: "discounts_order_id_fkey")
+}
+
+model employees {
+  id   String  @id @db.VarChar
+  name String? @db.VarChar
+  role String? @db.VarChar
+}
+
+model items {
+  id              String   @id @db.VarChar
+  name            String?  @map("_name") @db.VarChar
+  hidden          Boolean?
+  available       Boolean?
+  automanage      Boolean?
+  price           Int?
+  pricetype       String?  @db.VarChar
+  defaulttaxrates Boolean?
+  cost            Float?   @db.Real
+  isrevenue       Boolean?
+  alternatename   String?  @db.VarChar
+  code            String?  @db.VarChar
+  sku             String?  @db.VarChar
+  unitname        String?  @db.VarChar
+  stockcount      Float?   @db.Real
+  modifiedtime    BigInt?
+  pricewithoutvat Float?   @db.Real
+  deleted         Boolean?
+  storefront      String?  @db.VarChar
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model items_categories {
+  item_id     String? @db.VarChar
+  category_id String? @db.VarChar
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model items_modifiergroups {
+  item_id          String? @db.VarChar
+  modifiergroup_id String? @db.VarChar
+
+  @@ignore
+}
+
+model lineitems {
+  id                     String     @id
+  orderref_id            String
+  item_id                String?
+  name                   String?    @map("_name")
+  price                  Int
+  createdtime            Decimal
+  orderclientcreatedtime Decimal
+  printed                Boolean
+  exchanged              Boolean
+  refunded               Boolean
+  isrevenue              Boolean
+  alternatename          String?
+  itemcode               String?
+  note                   String?
+  refund_id              String? 
+  isorderfee             Boolean
+  unitqty                Float?
+  modifications_total    Float?
+  orders                 orders     @relation(fields: [orderref_id], references: [id], onDelete: Cascade, map: "lineitems_order_id_fkey")
+  taxrates               taxrates[]
+
+  @@index([id], map: "idx_lineitems_id")
+}
+
+model modifications {
+  id             String  @id @db.VarChar
+  lineitemref_id String  @db.VarChar
+  name           String? @map("_name") @db.VarChar
+  amount         Float?  @db.Real
+  modifier_id    String? @db.VarChar
+  alternatename  String? @db.VarChar
+
+  @@index([lineitemref_id], map: "idx_modifications_lineitemref_id")
+}
+
+model modifiergroups {
+  id              String   @id @db.VarChar(255)
+  name            String   @map("_name") @db.VarChar(255)
+  show_by_default Boolean?
+  modifier_ids    String?
+  sort_order      Int?
+  deleted         Boolean?
+  maxallowed      Float?   @db.Real
+  minrequired     Float?   @db.Real
+  modifierids     String?
+  showbydefault   Boolean?
+  sortorder       Float?   @db.Real
+  item_id         String?  @db.VarChar
+}
+
+model orders {
+  id                String      @id @db.VarChar
+  currency          String?     @db.VarChar
+  employee_id       String?     @db.VarChar
+  total             Float?      @db.Real
+  paymentstate      String?     @db.VarChar
+  ordertype_id      String?     @db.VarChar
+  taxremoved        Boolean?
+  state             String?     @map("_state") @db.VarChar
+  manualtransaction Boolean?
+  grouplineitems    Boolean?
+  paytype           String?     @db.VarChar
+  createdtime       Decimal?    @db.Decimal(20, 6)
+  device_id         String?     @db.VarChar
+  storefront        String?     @db.VarChar
+  date_time         DateTime?   @default(dbgenerated("(to_timestamp(((createdtime / (1000)::numeric))::double precision) AT TIME ZONE 'America/New_York'::text)")) @db.Timestamptz(6)
+  dollar_total      Float?      @default(dbgenerated("((total)::numeric / (100)::numeric)")) @db.Real
+  discounts         discounts[]
+  lineitems         lineitems[]
+  payments          payments[]
+}
+
+model payments {
+  id                String   @id @db.VarChar
+  order_id          String   @db.VarChar
+  device_id         String?  @db.VarChar
+  tender_id         String?  @db.VarChar
+  amount            Float?   @db.Real
+  taxamount         Float?   @db.Real
+  employee_id       String?  @db.VarChar
+  createdtime       Decimal? @db.Decimal(25, 5)
+  clientcreatedtime Decimal? @db.Decimal(25, 5)
+  modifiedtime      Decimal? @db.Decimal(25, 5)
+  result            String?  @map("_result") @db.VarChar
+  cashbackamount    Float?   @db.Real
+  offline           Boolean? @map("_offline")
+  tipamount         Float?   @db.Real
+  note              String?
+  orders            orders   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  tenders           tenders? @relation(fields: [tender_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model taxrates {
+  id          String    @id @db.VarChar
+  lineitem_id String    @db.VarChar
+  name        String?   @db.VarChar
+  rate        BigInt?
+  isdefault   Boolean?
+  lineitems   lineitems @relation(fields: [lineitem_id], references: [id], onDelete: Cascade)
+}
+
+model tenders {
+  id              String     @id @db.VarChar
+  editable        Boolean?
+  enabled         Boolean?
+  href            String?
+  label           String?    @db.VarChar
+  labelkey        String?    @db.VarChar
+  openscashdrawer Boolean?
+  visible         Boolean?
+  payments        payments[]
+}
